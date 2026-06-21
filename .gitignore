@@ -24,7 +24,3 @@ coverage/
 
 # OS
 .DS_Store
-
-# WXT extension icons (override global `Icon` rule that case-insensitively matches `public/icon/`)
-!public/icon/
-!public/icon/*
