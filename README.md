@@ -40,8 +40,6 @@ Transaction detail panel open, ready to inspect
 2. **Create a key** → key type **User** (not Ingest) → name e.g. `slo-to-transaction-extension`.
 3. Copy the `NRAK-...` value.
 
-> ⚠️ User API keys are powerful. Don't paste them into Slack/GitHub. Rotate immediately if leaked.
-
 ### 2. Save the key in the extension
 
 1. Click the extension icon to open its popup.
@@ -58,7 +56,7 @@ Defaults to `Alt+Shift+L` (Win/Linux) and `MacCtrl+Shift+L` (= ⌃⇧L on macOS)
 2. Press the shortcut (or click the extension icon → **Jump to APM transaction**).
 3. A new tab opens with the APM transactions page. The row for the SLI's target transaction is auto-selected, revealing the detail panel.
 
-If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LIKE`), the extension still opens the transactions list, and the transaction name is **copied to the clipboard** as a fallback.
+If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LIKE`), the extension cannot extract a transaction name and surfaces an in-page toast on the SLO tab; the APM transactions page is not opened.
 
 ## How It Works
 
@@ -79,20 +77,20 @@ If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LI
 - US region only (NerdGraph `https://api.newrelic.com/graphql`). For EU, change `NERDGRAPH_ENDPOINT` in `utils/nerdgraph.ts`.
 - Works only when the SLI's `events.where` NRQL contains a literal `name = 'TransactionName'` clause.
 - The four-step automation depends on NR1's current DOM (the "View full table" link text, the `.common-filter-bar .wnd-Pill--clickable` filter pill, `[role="option"] .wnd-SearchSelectItem-label`, `input[type="search"]`, `[aria-label="Transaction Table"]`, the `wnd-DataTableRow` class, and the `interactiveLink` child). If New Relic redesigns the transactions UI, any step may fail. Each step has its own timeout (15 s / 5 s+5 s+3 s / 8 s / 8 s) so a stale tab won't hang indefinitely.
-- The detail panel's state UUID (`?state=<uuid>` in the URL) is session-tied server-side state in NR1 and **cannot be deep-linked across users or sessions** — that's why the extension goes through the three-step UI automation instead of synthesizing a `state` URL.
+- The detail panel's state UUID (`?state=<uuid>` in the URL) is session-tied server-side state in NR1 and **cannot be deep-linked across users or sessions** — that's why the extension goes through the four-step UI automation instead of synthesizing a `state` URL.
 - Only when Chrome is the front app — same precondition as any Chrome-based hotkey extension.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Toast: "User API key が未設定です" | popup で未保存 | popup の API key 設定でキーを保存 |
-| Toast: "NerdGraph HTTP 401/403" | キー無効 / Ingest キーを保存した / scope 違い | User API key を再発行して保存 |
-| Toast: "SLI に紐づく APM エンティティが見つかりません" | SLI に `nr.associatedEntityGuid` タグが無い | SLI の source 設定で APM service を紐付け |
-| Overview だけ開いて自動化が止まる (step: `view-full-table`) | NR DOM 変更で "View full table" 要素が見つからない | content script の `findByExactText` 対象テキストを更新 |
-| 自動化が `step: filter-pill` / `filter-option` / `filter-confirm` で止まる | NR の Transaction type フィルタ UI の DOM が変わった (pill / option / アップデート反映) | `ensureTransactionTypeFilter` の selector (`.common-filter-bar .wnd-Pill--clickable`, `[role="option"] .wnd-SearchSelectItem-label`) を見直す |
-| 自動化が `step: search-input` で止まる | View full table 後の DOM 変更で `input[type="search"]` が変わった | content script の selector を更新 |
-| 自動化が `step: filtered-row` で止まる | NRQL に `name = '...'` リテラルが無い／検索フィルタが効かなかった／DataTable のクラス名が変わった／Transaction Table 以外の grid と区別できなくなった | SLI の NRQL を確認、または `aria-label="Transaction Table"` / `.wnd-DataTableRow` / `.interactiveLink` の selector を更新 |
+| Toast: "User API key が未設定です" | No key saved in the popup | Save a User API key from the popup's API key panel |
+| Toast: "NerdGraph HTTP 401/403" | Invalid key / Ingest key saved by mistake / insufficient scope | Reissue a User API key and save it |
+| Toast: "SLI に紐づく APM エンティティが見つかりません" | SLI has no `nr.associatedEntityGuid` tag | Attach an APM service to the SLI in its source configuration |
+| Stops at the overview (step: `view-full-table`) | NR DOM change — "View full table" element not found | Update the target text in the content script's `findByExactText` call |
+| Stops at `step: filter-pill` / `filter-option` / `filter-confirm` | NR's Transaction type filter UI changed (pill / option / update propagation) | Revisit the selectors in `ensureTransactionTypeFilter` (`.common-filter-bar .wnd-Pill--clickable`, `[role="option"] .wnd-SearchSelectItem-label`) |
+| Stops at `step: search-input` | Post "View full table" DOM change — `input[type="search"]` no longer matches | Update the selector in the content script |
+| Stops at `step: filtered-row` | NRQL lacks a literal `name = '...'` / the search filter did not narrow the table / DataTable class names changed / cannot distinguish the Transaction Table from a sibling grid | Verify the SLI's NRQL, or update the `aria-label="Transaction Table"` / `.wnd-DataTableRow` / `.interactiveLink` selectors |
 
 ## Tech Stack
 
