@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# WXT
+.wxt/
+.output/
+
+# Build
+dist/
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# WXT extension icons (override global `Icon` rule that case-insensitively matches `public/icon/`)
+!public/icon/
+!public/icon/*

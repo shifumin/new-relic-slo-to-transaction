@@ -1,0 +1,105 @@
+# New Relic SLO → APM Transaction
+
+A Chrome extension that jumps from a New Relic SLO summary page to the APM transaction detail panel the SLI monitors, in one keyboard shortcut.
+
+```
+SLO summary page (active)
+        │
+        │  ⌃⇧L (configurable)
+        ▼
+APM transactions page → row for the SLI's target transaction auto-clicked
+        │
+        ▼
+Transaction detail panel open, ready to inspect
+```
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/shifumin/new-relic-slo-to-transaction.git
+   cd new-relic-slo-to-transaction
+   ```
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Build the extension:
+   ```bash
+   pnpm build
+   ```
+4. Open `chrome://extensions/` in Chrome
+5. Enable **Developer mode** (toggle in the top right)
+6. Click **Load unpacked** and select the `.output/chrome-mv3` directory
+
+## Setup
+
+### 1. Issue a User API key
+
+1. Visit https://one.newrelic.com/api-keys.
+2. **Create a key** → key type **User** (not Ingest) → name e.g. `slo-to-transaction-extension`.
+3. Copy the `NRAK-...` value.
+
+> ⚠️ User API keys are powerful. Don't paste them into Slack/GitHub. Rotate immediately if leaked.
+
+### 2. Save the key in the extension
+
+1. Click the extension icon to open its popup.
+2. Expand **API key 設定** and paste the User API key.
+3. Click **保存**.
+
+### 3. Assign a keyboard shortcut (optional)
+
+Defaults to `Alt+Shift+L` (Win/Linux) and `MacCtrl+Shift+L` (= ⌃⇧L on macOS). To customize, click **Customize shortcut** in the popup (or open `chrome://extensions/shortcuts`).
+
+## Usage
+
+1. Open any New Relic SLO summary page, e.g. `https://one.newrelic.com/nr1-core/service-levels-management/summary/<SLI_GUID>?account=<ACCT>&duration=<MS>`.
+2. Press the shortcut (or click the extension icon → **Jump to APM transaction**).
+3. A new tab opens with the APM transactions page. The row for the SLI's target transaction is auto-selected, revealing the detail panel.
+
+If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LIKE`), the extension still opens the transactions list, and the transaction name is **copied to the clipboard** as a fallback.
+
+## How It Works
+
+1. Reads the SLI GUID from the current SLO summary URL.
+2. Calls NerdGraph with the stored User API key to fetch:
+   - The associated APM entity GUID (`nr.associatedEntityGuid` tag).
+   - The SLI's `events.where` NRQL clause, from which the target transaction name (`name = '...'`) is extracted.
+3. Opens the APM transactions page for that APM entity in a new tab.
+4. The content script then runs a three-step automation chain inside that tab:
+   1. Find and click the **View full table** link in the "Top 20 transactions" widget (waits up to 15 s).
+   2. Wait for the search input, then fill the transaction name via a React-aware setter (waits up to 8 s).
+   3. Wait for the table to filter down to exactly one row, then click the row's interactive link (waits up to 8 s).
+5. NR opens the transaction detail panel — same UI as if you had navigated by hand.
+
+## Limitations
+
+- US region only (NerdGraph `https://api.newrelic.com/graphql`). For EU, change `NERDGRAPH_ENDPOINT` in `utils/nerdgraph.ts`.
+- Works only when the SLI's `events.where` NRQL contains a literal `name = 'TransactionName'` clause.
+- The three-step automation depends on NR1's current DOM (the "View full table" link text, `input[type="search"]`, the `wnd-DataTableRow` class, and the `interactiveLink` child). If New Relic redesigns the transactions UI, any step may fail. Each step has its own timeout (15 s / 8 s / 8 s) so a stale tab won't hang indefinitely.
+- The detail panel's state UUID (`?state=<uuid>` in the URL) is session-tied server-side state in NR1 and **cannot be deep-linked across users or sessions** — that's why the extension goes through the three-step UI automation instead of synthesizing a `state` URL.
+- Only when Chrome is the front app — same precondition as any Chrome-based hotkey extension.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Toast: "User API key が未設定です" | popup で未保存 | popup の API key 設定でキーを保存 |
+| Toast: "NerdGraph HTTP 401/403" | キー無効 / Ingest キーを保存した / scope 違い | User API key を再発行して保存 |
+| Toast: "SLI に紐づく APM エンティティが見つかりません" | SLI に `nr.associatedEntityGuid` タグが無い | SLI の source 設定で APM service を紐付け |
+| Overview だけ開いて自動化が止まる (step: `view-full-table`) | NR DOM 変更で "View full table" 要素が見つからない | content script の `findByExactText` 対象テキストを更新 |
+| 自動化が `step: search-input` で止まる | View full table 後の DOM 変更で `input[type="search"]` が変わった | content script の selector を更新 |
+| 自動化が `step: filtered-row` で止まる | NRQL に `name = '...'` リテラルが無い／検索フィルタが効かなかった／DataTable のクラス名が変わった | SLI の NRQL を確認、または selector 更新 |
+
+## Tech Stack
+
+- TypeScript
+- [WXT](https://wxt.dev/)
+- Manifest V3
+- Vitest (tests)
+- Biome (lint/format)
+
+## License
+
+MIT.

@@ -1,0 +1,204 @@
+:root {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+
+  color-scheme: light dark;
+
+  --color-text: #222;
+  --color-text-muted: #888;
+  --color-text-subtle: #666;
+  --color-bg: #fff;
+  --color-btn-bg: #f5f5f5;
+  --color-btn-bg-hover: #e8e8e8;
+  --color-btn-border: #ddd;
+  --color-btn-border-hover: #bbb;
+  --color-primary: #1c63d5;
+  --color-primary-text: #fff;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warn: #b45309;
+
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text: #eee;
+    --color-text-muted: #888;
+    --color-text-subtle: #aaa;
+    --color-bg: #1e1e1e;
+    --color-btn-bg: #2d2d2d;
+    --color-btn-bg-hover: #3d3d3d;
+    --color-btn-border: #444;
+    --color-btn-border-hover: #666;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  padding: 16px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.page-status {
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 6px;
+  border: 1px dashed var(--color-btn-border);
+  border-radius: 6px;
+}
+
+.page-status.ok {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.page-status.warn {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+}
+
+.primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    transform 0.1s ease;
+}
+
+.primary-btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.primary-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shortcut {
+  font-size: 11px;
+  opacity: 0.85;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.config {
+  border: 1px solid var(--color-btn-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background-color: var(--color-btn-bg);
+}
+
+.config[open] {
+  padding-bottom: 12px;
+}
+
+.config summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  padding: 4px 0;
+}
+
+.config label {
+  display: block;
+  font-size: 12px;
+  margin-top: 10px;
+  color: var(--color-text-subtle);
+}
+
+.help-link {
+  font-size: 11px;
+  margin-left: 6px;
+  color: var(--color-primary);
+}
+
+.config input {
+  width: 100%;
+  padding: 6px 8px;
+  margin-top: 4px;
+  border: 1px solid var(--color-btn-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
+.secondary-btn {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-btn-border);
+  border-radius: 4px;
+  background: var(--color-btn-bg-hover);
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.status {
+  text-align: center;
+  font-size: 12px;
+  min-height: 16px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.status.success {
+  color: var(--color-success);
+  opacity: 1;
+}
+
+.status.error {
+  color: var(--color-error);
+  opacity: 1;
+}
+
+.footer {
+  text-align: center;
+}
+
+.customize-link {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.customize-link:hover {
+  text-decoration: underline;
+}
