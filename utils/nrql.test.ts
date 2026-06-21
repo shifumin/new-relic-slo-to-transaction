@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTransactionName } from "./nrql";
+import { extractTransactionName, inferTransactionType } from "./nrql";
 
 describe("extractTransactionName", () => {
   it("extracts a transaction name from a multi-condition WHERE clause", () => {
@@ -37,5 +37,31 @@ AND duration < 20
   it("does not confuse attribute names that end in `name`", () => {
     // appName = 'foo' should not match as transaction name 'foo'.
     expect(extractTransactionName("appName = 'foo'")).toBeNull();
+  });
+});
+
+describe("inferTransactionType", () => {
+  it("classifies OtherTransaction/Sidekiq jobs as Non-web", () => {
+    expect(inferTransactionType("OtherTransaction/SidekiqJob/Foo::Bar/perform")).toBe("Non-web");
+  });
+
+  it("classifies OtherTransaction/Background jobs as Non-web", () => {
+    expect(inferTransactionType("OtherTransaction/Background/MyJob")).toBe("Non-web");
+  });
+
+  it("classifies Rails Controller routes as Web", () => {
+    expect(inferTransactionType("Controller/admin/workflow_templates/create")).toBe("Web");
+  });
+
+  it("classifies WebTransaction/Rack paths as Web", () => {
+    expect(inferTransactionType("WebTransaction/Rack/health")).toBe("Web");
+  });
+
+  it("defaults to Web for unknown prefixes", () => {
+    expect(inferTransactionType("CustomNamespace/foo")).toBe("Web");
+  });
+
+  it("defaults to Web for empty input", () => {
+    expect(inferTransactionType("")).toBe("Web");
   });
 });

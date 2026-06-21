@@ -67,17 +67,18 @@ If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LI
    - The associated APM entity GUID (`nr.associatedEntityGuid` tag).
    - The SLI's `events.where` NRQL clause, from which the target transaction name (`name = '...'`) is extracted.
 3. Opens the APM transactions page for that APM entity in a new tab.
-4. The content script then runs a three-step automation chain inside that tab:
+4. The content script then runs a four-step automation chain inside that tab:
    1. Find and click the **View full table** link in the "Top 20 transactions" widget (waits up to 15 s).
-   2. Wait for the search input, then fill the transaction name via a React-aware setter (waits up to 8 s).
-   3. Wait for the table to filter down to exactly one row, then click the row's interactive link (waits up to 8 s).
+   2. Ensure the **Transaction type** filter pill matches what the SLI tracks. `OtherTransaction/...` names (Sidekiq jobs, rake tasks) need `Non-web`; everything else stays on `Web`. If a switch is needed, the pill is clicked, the dropdown's matching option is clicked, and the new value is confirmed.
+   3. Wait for the search input, then fill the full transaction name via a React-aware setter (waits up to 8 s).
+   4. Wait for the **Transaction Table** grid (scoped explicitly — the sibling "Breakdown table" also uses the same row class for non-web jobs with segment breakdowns) to filter down to exactly one row, then click the row's interactive link (waits up to 8 s).
 5. NR opens the transaction detail panel — same UI as if you had navigated by hand.
 
 ## Limitations
 
 - US region only (NerdGraph `https://api.newrelic.com/graphql`). For EU, change `NERDGRAPH_ENDPOINT` in `utils/nerdgraph.ts`.
 - Works only when the SLI's `events.where` NRQL contains a literal `name = 'TransactionName'` clause.
-- The three-step automation depends on NR1's current DOM (the "View full table" link text, `input[type="search"]`, the `wnd-DataTableRow` class, and the `interactiveLink` child). If New Relic redesigns the transactions UI, any step may fail. Each step has its own timeout (15 s / 8 s / 8 s) so a stale tab won't hang indefinitely.
+- The four-step automation depends on NR1's current DOM (the "View full table" link text, the `.common-filter-bar .wnd-Pill--clickable` filter pill, `[role="option"] .wnd-SearchSelectItem-label`, `input[type="search"]`, `[aria-label="Transaction Table"]`, the `wnd-DataTableRow` class, and the `interactiveLink` child). If New Relic redesigns the transactions UI, any step may fail. Each step has its own timeout (15 s / 5 s+5 s+3 s / 8 s / 8 s) so a stale tab won't hang indefinitely.
 - The detail panel's state UUID (`?state=<uuid>` in the URL) is session-tied server-side state in NR1 and **cannot be deep-linked across users or sessions** — that's why the extension goes through the three-step UI automation instead of synthesizing a `state` URL.
 - Only when Chrome is the front app — same precondition as any Chrome-based hotkey extension.
 
@@ -89,8 +90,9 @@ If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LI
 | Toast: "NerdGraph HTTP 401/403" | キー無効 / Ingest キーを保存した / scope 違い | User API key を再発行して保存 |
 | Toast: "SLI に紐づく APM エンティティが見つかりません" | SLI に `nr.associatedEntityGuid` タグが無い | SLI の source 設定で APM service を紐付け |
 | Overview だけ開いて自動化が止まる (step: `view-full-table`) | NR DOM 変更で "View full table" 要素が見つからない | content script の `findByExactText` 対象テキストを更新 |
+| 自動化が `step: filter-pill` / `filter-option` / `filter-confirm` で止まる | NR の Transaction type フィルタ UI の DOM が変わった (pill / option / アップデート反映) | `ensureTransactionTypeFilter` の selector (`.common-filter-bar .wnd-Pill--clickable`, `[role="option"] .wnd-SearchSelectItem-label`) を見直す |
 | 自動化が `step: search-input` で止まる | View full table 後の DOM 変更で `input[type="search"]` が変わった | content script の selector を更新 |
-| 自動化が `step: filtered-row` で止まる | NRQL に `name = '...'` リテラルが無い／検索フィルタが効かなかった／DataTable のクラス名が変わった | SLI の NRQL を確認、または selector 更新 |
+| 自動化が `step: filtered-row` で止まる | NRQL に `name = '...'` リテラルが無い／検索フィルタが効かなかった／DataTable のクラス名が変わった／Transaction Table 以外の grid と区別できなくなった | SLI の NRQL を確認、または `aria-label="Transaction Table"` / `.wnd-DataTableRow` / `.interactiveLink` の selector を更新 |
 
 ## Tech Stack
 
