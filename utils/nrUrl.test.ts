@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApmTransactionsUrl, parseSloUrl } from "./nrUrl";
+import { accountIdFromEntityGuid, buildApmTransactionsUrl, parseSloUrl } from "./nrUrl";
 
 describe("parseSloUrl", () => {
   it("parses a typical SLO summary URL with account and duration", () => {
@@ -19,11 +19,25 @@ describe("parseSloUrl", () => {
     expect(parsed?.duration).toBe("604800000");
   });
 
-  it("returns empty string for account when missing", () => {
+  it("falls back to account encoded in the SLI GUID when query param is missing", () => {
+    // base64("3271041|EXT|SERVICE_LEVEL|2260257")
     const url =
-      "https://one.newrelic.com/nr1-core/service-levels-management/summary/SOME_GUID?duration=86400000";
+      "https://one.newrelic.com/nr1-core/service-levels-management/summary/MzI3MTA0MXxFWFR8U0VSVklDRV9MRVZFTHwyMjYwMjU3?duration=604800000&state=8f3413b4-5edc-5a7f-b64e-298041154635";
     const parsed = parseSloUrl(url);
-    expect(parsed?.account).toBe("");
+    expect(parsed?.account).toBe("3271041");
+  });
+
+  it("prefers the explicit ?account= over the GUID-encoded account", () => {
+    // GUID encodes 3271041, but the URL says 9999999.
+    const url =
+      "https://one.newrelic.com/nr1-core/service-levels-management/summary/MzI3MTA0MXxFWFR8U0VSVklDRV9MRVZFTHwyMjYwMjU3?account=9999999";
+    expect(parseSloUrl(url)?.account).toBe("9999999");
+  });
+
+  it("returns empty string for account when neither the URL nor the GUID encodes one", () => {
+    const url =
+      "https://one.newrelic.com/nr1-core/service-levels-management/summary/not-a-base64-guid?duration=86400000";
+    expect(parseSloUrl(url)?.account).toBe("");
   });
 
   it("returns null for a non-SLO URL", () => {
@@ -44,6 +58,30 @@ describe("parseSloUrl", () => {
     const url =
       "https://one.newrelic.com/nr1-core/service-levels-management/summary/GUID/details?account=1&duration=1#abc";
     expect(parseSloUrl(url)?.sliGuid).toBe("GUID");
+  });
+});
+
+describe("accountIdFromEntityGuid", () => {
+  it("extracts the numeric account id from a standard base64 GUID", () => {
+    // base64("3271041|EXT|SERVICE_LEVEL|2260257")
+    expect(accountIdFromEntityGuid("MzI3MTA0MXxFWFR8U0VSVklDRV9MRVZFTHwyMjYwMjU3")).toBe("3271041");
+  });
+
+  it("handles URL-safe base64 variants (- and _)", () => {
+    // Encode "12345|APM|APPLICATION|99" then swap any +/ for -_ to mimic URL-safe form.
+    const stdBase64 = btoa("12345|APM|APPLICATION|99");
+    const urlSafe = stdBase64.replace(/\+/g, "-").replace(/\//g, "_");
+    expect(accountIdFromEntityGuid(urlSafe)).toBe("12345");
+  });
+
+  it("returns empty string when the GUID is not base64 decodable", () => {
+    expect(accountIdFromEntityGuid("not!base64@@@")).toBe("");
+  });
+
+  it("returns empty string when the decoded first segment is not numeric", () => {
+    // base64("NOT_A_NUMBER|EXT|SERVICE_LEVEL|1")
+    const guid = btoa("NOT_A_NUMBER|EXT|SERVICE_LEVEL|1");
+    expect(accountIdFromEntityGuid(guid)).toBe("");
   });
 });
 
