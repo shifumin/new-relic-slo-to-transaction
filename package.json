@@ -2,7 +2,7 @@
   "name": "new-relic-slo-to-transaction",
   "description": "Jump from a New Relic SLO summary page to the APM transaction detail it monitors, with one keyboard shortcut.",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "dev": "wxt",
