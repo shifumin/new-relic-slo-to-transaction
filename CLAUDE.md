@@ -34,7 +34,7 @@ public/icon/                        # Extension icons (16–128px)
 ## End-to-end Flow
 
 1. User presses keyboard shortcut on an SLO summary page.
-2. `background.ts` reads the active tab URL, parses SLI GUID + account + duration.
+2. `background.ts` reads the active tab URL, parses SLI GUID + duration. The account ID is taken from `?account=` when present; otherwise it's decoded from the SLI GUID itself (see invariants).
 3. Calls NerdGraph with the stored User API key:
    - Reads `nr.associatedEntityGuid` tag → APM entity GUID
    - Reads `serviceLevel.indicators[0].events.{goodEvents,validEvents}.where` → extracts transaction name via regex `/name\s*=\s*'([^']+)'/i`
@@ -77,6 +77,7 @@ mise exec -- pnpm zip        # Create ZIP for Chrome Web Store
 ## Invariants Not Obvious From Code
 
 - **NerdGraph US region hardcoded** (`https://api.newrelic.com/graphql`). For EU, change `NERDGRAPH_ENDPOINT` in `utils/nerdgraph.ts`.
+- **Account ID is recoverable from any New Relic entity GUID.** GUIDs are base64 of `accountId|domain|type|entityId` (e.g. `MzI3MTA0MXxFWFR8U0VSVklDRV9MRVZFTHwyMjYwMjU3` → `3271041|EXT|SERVICE_LEVEL|2260257`). NR sometimes ships SLO summary URLs without `?account=...` (e.g. permalinks carrying only `?duration=` and `?state=`), so `parseSloUrl` falls back to `accountIdFromEntityGuid(sliGuid)` when the query param is missing. Explicit `?account=` still wins when present. The decoder tolerates URL-safe base64 (`-`/`_`) in addition to the standard alphabet, and returns `""` (not a partial match) if the first pipe-separated segment isn't a numeric string — so `background.ts` still surfaces the "URL に account パラメータがありません" toast on truly malformed GUIDs.
 - **Transaction-name extraction depends on the SLI being defined with a literal `name = '...'` predicate.** SLIs defined with `name LIKE`, regex, or other patterns will open the transactions list but cannot auto-fill the search; the chain stops with a `filtered-row` failure.
 - **Transaction type (`Web` vs `Non-web`) is inferred from the name prefix**, not from the NRQL. `OtherTransaction/` → `Non-web`; everything else → `Web`. This matches NR's own classification and works for Rails (`Controller/...`), Sinatra/Rack (`WebTransaction/...`), and Sidekiq/background jobs (`OtherTransaction/SidekiqJob/...`). The NR APM Transactions full table only shows one type at a time, so the wrong filter means the search returns zero rows and `filtered-row` times out.
 - **The Transaction Table row selector MUST scope to `[aria-label="Transaction Table"]`**. NR renders a sibling `[aria-label="Breakdown table"]` (segment breakdown for the focused transaction) that uses the same `.wnd-DataTableRow` class. For non-web jobs with external service segments, the unscoped query returned 5 rows instead of 1, breaking the "exactly one row" check.

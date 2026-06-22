@@ -52,7 +52,7 @@ Defaults to `Alt+Shift+L` (Win/Linux) and `MacCtrl+Shift+L` (= ⌃⇧L on macOS)
 
 ## Usage
 
-1. Open any New Relic SLO summary page, e.g. `https://one.newrelic.com/nr1-core/service-levels-management/summary/<SLI_GUID>?account=<ACCT>&duration=<MS>`.
+1. Open any New Relic SLO summary page, e.g. `https://one.newrelic.com/nr1-core/service-levels-management/summary/<SLI_GUID>?account=<ACCT>&duration=<MS>`. (`?account=` is optional — when it's missing, the account ID is recovered from the SLI GUID itself.)
 2. Press the shortcut (or click the extension icon → **Jump to APM transaction**).
 3. A new tab opens with the APM transactions page. The row for the SLI's target transaction is auto-selected, revealing the detail panel.
 
@@ -60,7 +60,7 @@ If the SLI's NRQL contains no literal `name = '...'` predicate (e.g. it uses `LI
 
 ## How It Works
 
-1. Reads the SLI GUID from the current SLO summary URL.
+1. Reads the SLI GUID from the current SLO summary URL. The account ID is read from `?account=` when present, or decoded from the GUID itself (NR entity GUIDs are base64 of `accountId|domain|type|entityId`) when it isn't.
 2. Calls NerdGraph with the stored User API key to fetch:
    - The associated APM entity GUID (`nr.associatedEntityGuid` tag).
    - The SLI's `events.where` NRQL clause, from which the target transaction name (`name = '...'`) is extracted.
